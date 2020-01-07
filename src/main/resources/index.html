@@ -1,0 +1,46 @@
+<html lang="en">
+<head>
+	<title>Actor Sudoku Solver</title>
+	<script src=""></script>
+	<script src="actorSudoku.js"></script>
+
+	<style>
+		table#sudoku {
+			border-collapse: collapse;
+		}
+		td.mainCell {
+			height: 5em;
+			width: 5em;
+			border:1px solid;
+		}
+		td.mainCell:nth-child(3) {
+			border-right: 10px darkgray solid ;
+		}
+		td.mainCell:nth-child(6) {
+			border-right: 10px darkgray solid ;
+		}
+		tr:nth-child(3) td.mainCell {
+			border-bottom: 10px darkgray solid ;
+		}
+		tr:nth-child(6) td.mainCell {
+			border-bottom: 10px darkgray solid ;
+		}
+
+		td.mainCell table {
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			padding: 0;
+			text-align: center;
+		}
+
+		td.mainCell p {
+			font-size: 2em;
+			text-align: center;
+		}
+	</style>
+
+</head>
+	<table id="sudoku">
+	</table>
+</html>
