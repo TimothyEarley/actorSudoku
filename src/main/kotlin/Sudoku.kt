@@ -69,7 +69,7 @@ suspend fun main() {
 		val loggingChan = bus.openSubscription()
 		launch {
 			for (msg in loggingChan) {
-				if (msg is SudokuMessage.IsNotNumber) continue
+//				if (msg is SudokuMessage.IsNotNumber) continue
 				log(msg.toString())
 			}
 		}
@@ -81,7 +81,7 @@ suspend fun main() {
 		}
 
 		sudoku.forEach { x, y, number ->
-			bus.send(SudokuMessage.IsNumber(Point(x, y), number))
+			bus.send(SudokuMessage.IsNumber(Point(x, y), number, "SET"))
 			delay(10)
 		}
 

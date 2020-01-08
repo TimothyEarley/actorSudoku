@@ -9,10 +9,22 @@ import kotlinx.coroutines.launch
 sealed class SudokuMessage {
 	abstract val point: Point
 	abstract val number: Int
+	abstract val reason: String
 
-	data class IsNumber(override val point: Point, override val number: Int) : SudokuMessage()
-	data class IsNotNumber(override val point: Point, override val number: Int): SudokuMessage()
+	data class IsNumber(
+		override val point: Point,
+		override val number: Int,
+		override val reason: String
+	) : SudokuMessage()
+
+	data class IsNotNumber(
+		override val point: Point,
+		override val number: Int,
+		override val reason: String
+	): SudokuMessage()
 }
+
+// https://www.sudokuwiki.org
 
 @ExperimentalCoroutinesApi
 data class CellActor(
@@ -26,7 +38,7 @@ data class CellActor(
 		(point.y / 3) * 3
 	)
 
-	//TODO projection
+	//TODO y wing?, swordfish !
 
 	private val chan: ReceiveChannel<SudokuMessage> = bus.openSubscription()
 
@@ -40,15 +52,14 @@ data class CellActor(
 				if (isMe(msg)) {
 					when (msg) {
 						is SudokuMessage.IsNumber -> setNumber(msg.number)
-						is SudokuMessage.IsNotNumber -> { /* TODO check if only one option left */ }
+						is SudokuMessage.IsNotNumber -> checkIfOnlyOneOption()
 					}
 				} else {
 
-					if (msg is SudokuMessage.IsNumber && isInReach(msg)) deduceNotNumber(msg.number)
+					if (msg is SudokuMessage.IsNumber && isInReach(msg)) deduceNotNumber(msg.number, "Removed by ${msg.point}")
 
 					if (msg is SudokuMessage.IsNumber && isMe(msg)) setNumber(msg.number)
 
-					//TODO multple deductions?
 					if (isBlock(msg)) {
 						checkIfLastInBlock()
 						checkAllInBlockAligned()
@@ -57,6 +68,7 @@ data class CellActor(
 					if (isRow(msg)) {
 						checkIfLastInRow()
 						checkTupleInRow()
+						checkXWingRow() // TODO x wing col
 					}
 					if (isCol(msg)) {
 						checkIfLastInCol()
@@ -65,6 +77,12 @@ data class CellActor(
 				}
 
 			}
+		}
+	}
+
+	private suspend fun checkIfOnlyOneOption() {
+		if (done) {
+			deduceNumber(state[point].single(), "last option")
 		}
 	}
 
@@ -77,12 +95,13 @@ data class CellActor(
 	private suspend fun checkIfLastInCol() = checkIfLastIn(point.x..point.x, 0..8)
 
 	private suspend fun checkIfLastIn(xRange: IntRange, yRange: IntRange) {
+		if (done) return
 		for (number in 1..9) {
 			if (!possible(number)) continue
 
 			if (count(xRange, yRange, number) == 1) {
 				log("Deduced number $number in $point, b.c. it  was the last option in block/row/col")
-				deduceNumber(number)
+				deduceNumber(number, "last in row/col/block")
 				return
 			}
 		}
@@ -120,7 +139,7 @@ data class CellActor(
 				if (y >= blockPoint.y && y <= blockPoint.y + 2) continue
 
 				if (state[point.x, y].contains(number)) {
-					storeAndSend(SudokuMessage.IsNotNumber(Point(point.x, y), number))
+					storeAndSend(SudokuMessage.IsNotNumber(Point(point.x, y), number, "Col aligned in block"))
 				}
 			}
 		}
@@ -137,7 +156,7 @@ data class CellActor(
 				if (x >= blockPoint.x && x <= blockPoint.x + 2) continue
 
 				if (state[x, point.y].contains(number)) {
-					storeAndSend(SudokuMessage.IsNotNumber(Point(x, point.y), number))
+					storeAndSend(SudokuMessage.IsNotNumber(Point(x, point.y), number, "Row aligned in block"))
 				}
 			}
 		}
@@ -149,45 +168,105 @@ data class CellActor(
 
 
 
-	private suspend fun checkTupleIn(xRange: IntRange, yRange: IntRange) {
+	private suspend fun checkTupleIn(xRange: IntRange, yRange: IntRange) = checkTuple(xRange, yRange, state[point])
+
+//	private suspend fun checkSubsetTupleIn(xRange: IntRange, yRange: IntRange) {
+//		if (done) return
+//
+//		val myPossible = state[point]
+//		val myCount = myPossible.size
+//
+//		val subsets = myPossible.powerset().groupBy { it.size }
+//
+//		for (count in 2..maxOf(myCount, 4)) { //heuristic cap
+//			subsets[count]?.forEach { tuple ->
+//				checkTuple(xRange, yRange, tuple)
+//			}
+//		}
+//	}
+
+	private suspend fun checkTuple(xRange: IntRange, yRange: IntRange, tuple: Set<Int>) {
 		if (done) return
 
-		val myPossible = state[point]
-		val myCount = myPossible.size
+		val count = tuple.size
+
 		// look for others with the same possible numbers
-
-		// heuristic:
-		if (myCount > 3) return
-
-		// don't mess with only one option left deduction
-		if (myCount == 1) return
-
 		val pointsInRange = xRange.flatMap { x -> yRange.map { y -> Point(x, y) } }
 		val samePossible = pointsInRange.filter { p ->
 			val set = state[p]
-			set.size <= myCount && myPossible.containsAll(set)
+			/*set.size <= count && */ tuple.containsAll(set)
 		}
 
-		if (samePossible.size == myCount) {
+		if (samePossible.size == count) {
 			// others are impossible
 			for (p in pointsInRange) {
-				if (p in samePossible) continue
-
-				state[p].filter { myPossible.contains(it) }.forEach {  number ->
-					log("Found tuple of size $myCount consisting of $samePossible and number=$number. Target: $p")
-					storeAndSend(SudokuMessage.IsNotNumber(p, number))
+				if (p in samePossible) {
+					// check if it has other things apart from the tuple,
+					// if so, remove it
+					state[p].filterNot { tuple.contains(it) }.forEach { number ->
+						storeAndSend(SudokuMessage.IsNotNumber(p, number, "Tuple interior of size $count by $point"))
+					}
+				} else {
+					state[p].filter { tuple.contains(it) }.forEach { number ->
+						storeAndSend(SudokuMessage.IsNotNumber(p, number, "Tuple projection of size $count by $point"))
+					}
 				}
 			}
 		}
 	}
 
-	private suspend fun deduceNumber(number: Int) {
-		setNumber(number)
-		storeAndSend(SudokuMessage.IsNumber(point, number))
+	private suspend fun checkXWingRow() {
+		if (done) return
+
+		val myPossible = state[point]
+
+		myPossible.forEach { number ->
+			if (count(0..8, point.y .. point.y, number) == 2) {
+				// potential for an x wing
+				val otherInRow = Point(
+					(0..8).find { it != point.x && state[it, point.y].contains(number) }!!,
+					point.y
+				)
+				// now scan other rows in this column for partners
+				for (row in 0..8) {
+					if (row == point.y) continue
+
+					val colPoint = Point(point.x, row)
+					val colOther = Point(otherInRow.x, row)
+
+					if (state[colPoint].contains(number) && state[colOther].contains(number)) {
+						// getting closer to the x wing
+
+						if (count(0..8, row..row, number) == 2) {
+							// X Wing!
+							// the columns now cannot be that number
+							for (elimRow in 0..8) {
+								if (elimRow == row || elimRow == point.y) continue
+
+								val pointsToTarget = listOf(Point(point.x, elimRow), Point(otherInRow.x, elimRow))
+
+								for (p in pointsToTarget) {
+									if (state[p].contains(number)) {
+										storeAndSend(SudokuMessage.IsNotNumber(p, number, "X-Wing by $point, $otherInRow, $colPoint, $colOther"))
+									}
+								}
+							}
+
+						}
+					}
+
+				}
+			}
+		}
 	}
 
-	private suspend fun deduceNotNumber(number: Int) {
-		storeAndSend(SudokuMessage.IsNotNumber(point, number))
+	private suspend fun deduceNumber(number: Int, reason: String) {
+		setNumber(number)
+		storeAndSend(SudokuMessage.IsNumber(point, number, reason))
+	}
+
+	private suspend fun deduceNotNumber(number: Int, reason: String) {
+		storeAndSend(SudokuMessage.IsNotNumber(point, number, reason))
 	}
 
 	private fun setNumber(number: Int) {
@@ -214,6 +293,15 @@ data class CellActor(
 	}
 
 }
+
+private fun <T> Collection<T>.powerset(): Sequence<Set<T>> =
+	if (isEmpty()) sequenceOf(emptySet())
+	else sequence {
+		val head = first()
+		val tailP = drop(1).powerset()
+		yieldAll(tailP)
+		yieldAll(tailP.map { it + head })
+	}
 
 fun cellActors(bus: BroadcastChannel<SudokuMessage>): List<CellActor> {
 	return (0..8).flatMap { x ->

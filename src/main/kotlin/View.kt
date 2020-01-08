@@ -8,8 +8,11 @@ import kotlinx.coroutines.launch
 import kotlinx.html.*
 import kotlinx.html.dom.create
 import kotlinx.html.js.onClickFunction
+import kotlinx.html.js.onContextMenuFunction
 import org.w3c.dom.HTMLTableElement
 import org.w3c.dom.events.Event
+import org.w3c.dom.events.InputEvent
+import org.w3c.dom.events.MouseEvent
 import kotlin.browser.document
 import kotlin.browser.window
 
@@ -60,7 +63,8 @@ class View(
 												val number = 3 * i + di
 												td {
 													+n(number)
-													onClickFunction = click(x, y, number)
+													onClickFunction = click(x, y, number, true)
+													onContextMenuFunction = click(x, y, number, false)
 												}
 											}
 										}
@@ -76,10 +80,13 @@ class View(
 		table.replaceWith(newTable)
 	}
 
-	private fun click(x: Int, y: Int, number: Int): (Event) -> Unit = {
-		log("click $x/$y with $number")
+	private fun click(x: Int, y: Int, number: Int, leftClick: Boolean): (Event) -> Unit = {
+		it.preventDefault()
 		scope.launch {
-			bus.send(SudokuMessage.IsNumber(Point(x, y), number))
+			when {
+				leftClick -> bus.send(SudokuMessage.IsNumber(Point(x, y), number, "CLICK"))
+				else      -> bus.send(SudokuMessage.IsNotNumber(Point(x, y), number, "CLICK"))
+			}
 		}
 	}
 
