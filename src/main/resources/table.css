@@ -1,0 +1,40 @@
+table#sudoku {
+	border-collapse: collapse;
+	width: fit-content;
+	font-family: 'Montserrat', sans-serif;
+}
+td.mainCell {
+	height: 80px;
+	width: 80px;
+	border: 1px solid;
+}
+td.mainCell:nth-child(3) {
+	border-right: 5px #799ab4 solid ;
+}
+td.mainCell:nth-child(6) {
+	border-right: 5px #799ab4 solid ;
+}
+tr:nth-child(3) td.mainCell {
+	border-bottom: 5px #799ab4 solid ;
+}
+tr:nth-child(6) td.mainCell {
+	border-bottom: 5px #799ab4 solid ;
+}
+
+td.mainCell table {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	text-align: center;
+}
+
+td.mainCell table td {
+	cursor: pointer;
+}
+
+td.mainCell p {
+	margin: 0;
+	font-size: 2em;
+	text-align: center;
+}

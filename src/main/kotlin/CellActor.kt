@@ -68,7 +68,8 @@ data class CellActor(
 					if (isRow(msg)) {
 						checkIfLastInRow()
 						checkTupleInRow()
-						checkXWingRow() // TODO x wing col
+						// disabled bc it is too advanced for the goal of this program
+						// checkXWingRow() // TODO x wing col
 					}
 					if (isCol(msg)) {
 						checkIfLastInCol()

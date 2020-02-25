@@ -4,8 +4,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BroadcastChannel
 import kotlinx.coroutines.channels.Channel
 
-//TODO refactor Int to 1..9
-
 class Sudoku(
 	private val grid: Grid<Int?>
 ) {
@@ -25,13 +23,6 @@ class Sudoku(
 			}
 		}
 	}
-
-	fun prettyString(): String = grid.toList().map { row ->
-		row.toList()
-			.map { it ?: "." }
-			.chunked(3)
-			.joinToString(separator = "|", transform = { it.joinToString(separator = " ")})
-	}.chunked(3).joinToString(separator = "\n" + "-".repeat(17) + "\n", transform = { it.joinToString(separator = "\n") })
 }
 
 fun parseSudoku(line: String): Sudoku {
@@ -69,7 +60,6 @@ suspend fun main() {
 		val loggingChan = bus.openSubscription()
 		launch {
 			for (msg in loggingChan) {
-//				if (msg is SudokuMessage.IsNotNumber) continue
 				log(msg.toString())
 			}
 		}

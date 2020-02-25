@@ -1,46 +1,30 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>Actor Sudoku Solver</title>
+	<title>Actor Sudoku Helper</title>
 	<script src=""></script>
 	<script src="actorSudoku.js"></script>
-
-	<style>
-		table#sudoku {
-			border-collapse: collapse;
-		}
-		td.mainCell {
-			height: 5em;
-			width: 5em;
-			border:1px solid;
-		}
-		td.mainCell:nth-child(3) {
-			border-right: 10px darkgray solid ;
-		}
-		td.mainCell:nth-child(6) {
-			border-right: 10px darkgray solid ;
-		}
-		tr:nth-child(3) td.mainCell {
-			border-bottom: 10px darkgray solid ;
-		}
-		tr:nth-child(6) td.mainCell {
-			border-bottom: 10px darkgray solid ;
-		}
-
-		td.mainCell table {
-			width: 100%;
-			height: 100%;
-			margin: 0;
-			padding: 0;
-			text-align: center;
-		}
-
-		td.mainCell p {
-			font-size: 2em;
-			text-align: center;
-		}
-	</style>
-
+	<link href="https://fonts.googleapis.com/css?family=Montserrat|Roboto+Slab&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="main.css">
+	<link rel="stylesheet" href="table.css">
+	<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+	<link rel="icon" href="favicon.ico" type="image/x-icon">
 </head>
-	<table id="sudoku">
-	</table>
+<body>
+	<div class="container">
+		<table id="sudoku"></table>
+		<div id="help">
+			<h1>Sudoku Helper</h1>
+			This program helps you solve Sudokus by applying the basic rules for you. These are things like:
+			<ul>
+				<li>Naked Single, Pairs, Triples, Quads</li>
+				<li>Last in Row/Col/Block</li>
+			</ul>
+			The rest is up to you. Left click: Place number; Right click: Eliminate number.
+
+			<br><br>
+			<a href="https://github.com/TimothyEarley/actorSudoku">Source code available here</a>
+		</div>
+	</div>
+</body>
 </html>
